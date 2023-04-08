@@ -7,12 +7,16 @@ import { TrashIcon } from "@/components/TrashIcon";
 import { useAppStore } from "@/store";
 import Link from "next/link";
 import React, { useEffect } from "react";
+import { toast } from "react-hot-toast";
 
 const CustomersPage = () => {
   const { customers, fetchCustomers } = useAppStore();
 
   useEffect(() => {
-    fetchCustomers();
+    fetchCustomers().catch((err) => {
+      console.error(err);
+      toast.error("Error al cargar clientes");
+    });
   }, []);
 
   return (

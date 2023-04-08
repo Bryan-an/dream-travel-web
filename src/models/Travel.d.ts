@@ -3,8 +3,8 @@ import { EmployeeWithId } from "./Employee";
 
 export interface TravelResponse {
   destino?: string;
-  fecha_salida?: Date;
-  fecha_regreso?: Date;
+  fecha_salida?: string;
+  fecha_regreso?: string;
   precio?: number;
   id_cliente?: number;
   id_empleado?: number;

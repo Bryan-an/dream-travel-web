@@ -1,12 +1,19 @@
 import { Layout } from "@/components/Layout";
 import { Spinner } from "@/components/Spinner";
+import { axiosInstance } from "@/config/axios";
+import { EmployeeWithId } from "@/models/Employee";
 import { useAppStore } from "@/store";
 import { Field, Form, Formik } from "formik";
+import { GetServerSideProps } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React from "react";
 import { toast } from "react-hot-toast";
 import * as Yup from "yup";
+
+interface Props {
+  employee: EmployeeWithId;
+}
 
 interface Values {
   name: string;
@@ -14,13 +21,6 @@ interface Values {
   email: string;
   phone: string;
 }
-
-const initialValues: Values = {
-  name: "",
-  lastName: "",
-  email: "",
-  phone: "",
-};
 
 const validationSchema = Yup.object({
   name: Yup.string().required("Campo requerido"),
@@ -33,20 +33,29 @@ const validationSchema = Yup.object({
     .matches(/^\d+$/, "Teléfono inválido"),
 });
 
-const AddCustomerPage = () => {
-  const { addCustomer } = useAppStore();
+const EditEmployeePage: React.FC<Props> = ({
+  employee: { nombre, apellido, correo, telefono, id },
+}) => {
+  const { editEmployee } = useAppStore();
   const router = useRouter();
+
+  const initialValues: Values = {
+    name: nombre || "",
+    lastName: apellido || "",
+    email: correo || "",
+    phone: telefono || "",
+  };
 
   return (
     <>
       <Head>
-        <title>Agregar cliente</title>
+        <title>Editar empleado</title>
       </Head>
       <Layout>
         <section className="flex justify-center flex-col">
           <div>
             <h2 className="text-center mt-8 font-bold text-4xl text-slate-300">
-              Agregar Cliente
+              Editar Empleado
             </h2>
           </div>
           <div className="self-center max-w-lg w-[22rem] py-20">
@@ -57,18 +66,18 @@ const AddCustomerPage = () => {
                 try {
                   const { name, lastName, email, phone } = values;
 
-                  await addCustomer({
+                  await editEmployee(id, {
                     nombre: name,
                     apellido: lastName,
                     correo: email,
                     telefono: phone,
                   });
 
-                  toast.success("Cliente agregado con éxito");
+                  toast.success("Empleado actualizado con éxito");
                   router.back();
                 } catch (error) {
                   console.log(error);
-                  toast.error("Error al agregar cliente");
+                  toast.error("Error al actualizar empleado");
                 }
 
                 setSubmitting(false);
@@ -162,7 +171,7 @@ const AddCustomerPage = () => {
                       disabled={isSubmitting}
                       className="text-cyan-300 border border-cyan-300 px-4 py-2 rounded-lg flex hover:text-slate-800 hover:bg-cyan-300 font-semibold transition-all m-auto w-full justify-center"
                     >
-                      {isSubmitting ? <Spinner /> : "Agregar"}
+                      {isSubmitting ? <Spinner /> : "Actualizar"}
                     </button>
                   </div>
                 </Form>
@@ -175,4 +184,18 @@ const AddCustomerPage = () => {
   );
 };
 
-export default AddCustomerPage;
+export const getServerSideProps: GetServerSideProps<Props> = async ({
+  params,
+}) => {
+  const { data } = await axiosInstance.get<EmployeeWithId>(
+    `/employee/${params?.id}`
+  );
+
+  return {
+    props: {
+      employee: data,
+    },
+  };
+};
+
+export default EditEmployeePage;

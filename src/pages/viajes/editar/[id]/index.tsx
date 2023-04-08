@@ -1,12 +1,21 @@
 import { Layout } from "@/components/Layout";
 import { Spinner } from "@/components/Spinner";
+import { axiosInstance } from "@/config/axios";
+import { CustomerWithId } from "@/models/Customer";
+import { EmployeeWithId } from "@/models/Employee";
+import { TravelWithId } from "@/models/Travel";
 import { useAppStore } from "@/store";
 import { Field, Form, Formik } from "formik";
+import { GetServerSideProps } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React, { useEffect } from "react";
 import { toast } from "react-hot-toast";
 import * as Yup from "yup";
+
+interface Props {
+  travel: TravelWithId;
+}
 
 interface Values {
   destination: string;
@@ -17,15 +26,6 @@ interface Values {
   employeeId: string;
 }
 
-const initialValues: Values = {
-  destination: "",
-  departureDate: new Date().toISOString().split("T")[0],
-  returnDate: new Date().toISOString().split("T")[0],
-  price: "",
-  customerId: "",
-  employeeId: "",
-};
-
 const validationSchema = Yup.object({
   destination: Yup.string().required("Campo requerido"),
   departureDate: Yup.string().required("Campo requerido"),
@@ -35,10 +35,31 @@ const validationSchema = Yup.object({
   employeeId: Yup.string().required("Campo requerido"),
 });
 
-const AddTravelPage = () => {
-  const { addTravel, customers, employees, fetchCustomers, fetchEmployees } =
+const EditTravelPage: React.FC<Props> = ({
+  travel: {
+    id,
+    cliente,
+    destino,
+    empleado,
+    fecha_regreso,
+    fecha_salida,
+    precio,
+    id_cliente,
+    id_empleado,
+  },
+}) => {
+  const { editTravel, customers, employees, fetchCustomers, fetchEmployees } =
     useAppStore();
   const router = useRouter();
+
+  const initialValues: Values = {
+    destination: destino || "",
+    departureDate: fecha_salida || "",
+    returnDate: fecha_regreso || "",
+    price: precio?.toString() || "",
+    customerId: id_cliente?.toString() || "",
+    employeeId: id_empleado?.toString() || "",
+  };
 
   useEffect(() => {
     fetchCustomers().catch((err) => {
@@ -55,13 +76,13 @@ const AddTravelPage = () => {
   return (
     <>
       <Head>
-        <title>Agregar viaje</title>
+        <title>Editar viaje</title>
       </Head>
       <Layout>
         <section className="flex justify-center flex-col">
           <div>
             <h2 className="text-center mt-8 font-bold text-4xl text-slate-300">
-              Agregar Viaje
+              Editar Viaje
             </h2>
           </div>
           <div className="self-center max-w-lg w-[22rem] py-20">
@@ -79,20 +100,22 @@ const AddTravelPage = () => {
                     returnDate,
                   } = values;
 
-                  await addTravel({
+                  await editTravel(id, {
                     destino: destination,
                     fecha_regreso: returnDate,
                     fecha_salida: departureDate,
                     id_cliente: parseInt(customerId),
                     id_empleado: parseInt(employeeId),
                     precio: parseFloat(price),
+                    cliente,
+                    empleado,
                   });
 
-                  toast.success("Viaje agregado con éxito");
+                  toast.success("Viaje actualizado con éxito");
                   router.back();
                 } catch (error) {
                   console.log(error);
-                  toast.error("Error al agregar viaje");
+                  toast.error("Error al actualizar viaje");
                 }
 
                 setSubmitting(false);
@@ -261,7 +284,7 @@ const AddTravelPage = () => {
                       disabled={isSubmitting}
                       className="text-cyan-300 border border-cyan-300 px-4 py-2 rounded-lg flex hover:text-slate-800 hover:bg-cyan-300 font-semibold transition-all m-auto w-full justify-center"
                     >
-                      {isSubmitting ? <Spinner /> : "Agregar"}
+                      {isSubmitting ? <Spinner /> : "Actualizar"}
                     </button>
                   </div>
                 </Form>
@@ -274,4 +297,30 @@ const AddTravelPage = () => {
   );
 };
 
-export default AddTravelPage;
+export const getServerSideProps: GetServerSideProps<Props> = async ({
+  params,
+}) => {
+  const { data } = await axiosInstance.get<TravelWithId>(
+    `/travel/${params?.id}`
+  );
+
+  const { data: customer } = await axiosInstance.get<CustomerWithId>(
+    `/customer/${data.id_cliente}`
+  );
+
+  const { data: employee } = await axiosInstance.get<EmployeeWithId>(
+    `/employee/${data.id_empleado}`
+  );
+
+  return {
+    props: {
+      travel: {
+        ...data,
+        cliente: customer,
+        empleado: employee,
+      },
+    },
+  };
+};
+
+export default EditTravelPage;
